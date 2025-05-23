@@ -1,0 +1,5 @@
+db_path: "../../car_rental_platform.db"
+access_ttl: 15m
+refresh_ttl: 720h
+server: "localhost:3000"
+secret: "very-cool_very-secret_key1328756as;dlkhj"

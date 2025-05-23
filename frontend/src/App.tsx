@@ -1,22 +1,12 @@
-import React, { useState } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import './App.css'
 import Header from './components/Header';
-import CarList from './components/CarList';
-import CarFilter from './components/CarFilter';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
+import Home from './pages/Home';
 
-const HomePage: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  return (
-    <>
-      <CarFilter searchTerm={searchTerm} onSearchTermChange={setSearchTerm} />
-      <CarList searchTerm={searchTerm} />
-    </>
-  );
-};
+
 
 function App() {
   const isAuthenticated = false;
@@ -40,7 +30,7 @@ function App() {
 
       <main>
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<Home />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/profile" element={<ProfilePage />} />

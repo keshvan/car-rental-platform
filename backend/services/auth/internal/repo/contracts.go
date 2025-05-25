@@ -13,6 +13,8 @@ type (
 		FindByEmail(context.Context, string) (*entity.User, error)
 		FindByID(context.Context, int64) (*entity.User, error)
 		GetRole(context.Context, int64) (string, error)
+		FindAll(context.Context) ([]entity.User, error)
+		UpdateRole(context.Context, int64, string) error
 	}
 
 	TokenRepository interface {

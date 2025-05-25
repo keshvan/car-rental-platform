@@ -1,0 +1,38 @@
+<div>
+    <mat-toolbar color="primary" class="flex justify-between items-center">
+      <div class="flex items-center">
+        <h2 class="text-xl font-semibold mr-6">Админ Панель</h2>
+        <nav class="flex gap-3">
+          <a mat-button routerLink="/cars" routerLinkActive="bg-white/20">
+            <mat-icon>directions_car</mat-icon>
+            <span class="ml-1">Автомобили</span>
+          </a>
+          <a mat-button routerLink="/rents" routerLinkActive="bg-white/20">
+            <mat-icon>book</mat-icon>
+            <span class="ml-1">Аренды</span>
+          </a>
+          <a mat-button routerLink="/users" routerLinkActive="bg-white/20">
+            <mat-icon>people</mat-icon>
+            <span class="ml-1">Пользователи</span>
+          </a>
+          <a mat-button routerLink="/reviews" routerLinkActive="bg-white/20">
+            <mat-icon>reviews</mat-icon>
+            <span class="ml-1">Отзывы</span>
+          </a>
+        </nav>
+      </div>
+  
+      <div class="flex items-center gap-4">
+        <span class="text-sm">
+        </span>
+        <button mat-stroked-button (click)="logout()" class="border-white text-white hover:bg-white/10">
+          <mat-icon>exit_to_app</mat-icon>
+          <span class="ml-1">Выйти</span>
+        </button>
+      </div>
+    </mat-toolbar>
+  
+    <main class="p-6">
+      <router-outlet></router-outlet>
+    </main>
+  </div>

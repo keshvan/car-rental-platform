@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/keshvan/car-rental-platform/backend/services/car/internal/controller/request"
 	"github.com/keshvan/car-rental-platform/backend/services/car/internal/entity"
 )
 
@@ -24,7 +23,7 @@ func NewCarRepository(db *sqlx.DB) CarRepository {
 }
 
 func (r *carRepo) Create(ctx context.Context, car *entity.Car) error {
-	if _, err := r.db.ExecContext(ctx, "INSERT INTO cars (brand_id, model, name, year, price_per_hour, image_url) VALUES ($1, $2, $3, $4, $5, $6)", car.BrandID, car.Model, car.Name, car.Year, car.PricePerHour); err != nil {
+	if _, err := r.db.ExecContext(ctx, "INSERT INTO cars (brand_id, model, name, year, price_per_hour, image_url) VALUES ($1, $2, $3, $4, $5, $6)", car.BrandID, car.Model, car.Name, car.Year, car.PricePerHour, car.ImageURL); err != nil {
 		return fmt.Errorf("CarRepository - Create - db.ExecContext: %w", err)
 	}
 	return nil
@@ -84,11 +83,11 @@ func (r *carRepo) FindByID(ctx context.Context, id int64) (*entity.Car, error) {
 	}
 }
 
-func (r *carRepo) Update(ctx context.Context, id int64, req *request.UpdateCarRequest) error {
+func (r *carRepo) Update(ctx context.Context, id int64, car *entity.Car) error {
 	_, err := r.db.ExecContext(ctx, `
 	UPDATE cars
 	SET
-		brand = COALESCE($1, brand),
+		brand_id = COALESCE($1, brand_id),
 		model = COALESCE($2, model),
 		name = COALESCE($3, name),
 		year = COALESCE($4, year),
@@ -96,7 +95,7 @@ func (r *carRepo) Update(ctx context.Context, id int64, req *request.UpdateCarRe
 		image_url = COALESCE($6, image_url),
 		updated_at = CURRENT_TIMESTAMP
 	WHERE id = $7
-	`, req.Brand, req.Model, req.Name, req.Year, req.PricePerHour, req.ImageURL)
+	`, car.BrandID, car.Model, car.Name, car.Year, car.PricePerHour, car.ImageURL, id)
 
 	if err != nil {
 		return fmt.Errorf("CarRepository - Update - row.ExecContext: %w", err)
@@ -116,16 +115,17 @@ func (r *carRepo) SetAvailability(ctx context.Context, carID int64, available bo
 		return fmt.Errorf("CarRepository - SetAvailability - db.ExecContext: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
+	rowsAffected, _ := result.RowsAffected()
 
 	if rowsAffected == 0 {
 		return ErrCarNotFound
 	}
+
 	return nil
 }
 
 func (r *carRepo) Delete(ctx context.Context, id int64) error {
-	if _, err := r.db.ExecContext(ctx, "DELETE FROM categories WHERE id = $1", id); err != nil {
+	if _, err := r.db.ExecContext(ctx, "DELETE FROM cars WHERE id = $1", id); err != nil {
 		return fmt.Errorf("CarRepository - Delete - db.ExecContext: %w", err)
 	}
 	return nil
@@ -148,6 +148,15 @@ func (r *carRepo) AllBrands(ctx context.Context) ([]entity.Brand, error) {
 		brands = append(brands, brand)
 	}
 	return brands, nil
+}
+
+func (r *carRepo) BrandByID(ctx context.Context, id int64) (*entity.Brand, error) {
+	var brand entity.Brand
+	err := r.db.GetContext(ctx, &brand, "SELECT * FROM brands WHERE id = $1", id)
+	if err != nil {
+		return nil, fmt.Errorf("CarRepository - BrandByID - db.GetContext: %w", err)
+	}
+	return &brand, nil
 }
 
 func (r *carRepo) NewBrand(ctx context.Context, brandName string) error {

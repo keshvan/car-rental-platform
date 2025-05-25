@@ -2,11 +2,19 @@ package controller
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"net/mail"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/keshvan/car-rental-platform/backend/services/auth/internal/controller/request"
+	"github.com/keshvan/car-rental-platform/backend/services/auth/internal/repo"
 	"github.com/keshvan/car-rental-platform/backend/services/auth/internal/usecase"
+)
+
+var (
+	ErrInvalidEmail = errors.New("invalid email")
 )
 
 type AuthHandler struct {
@@ -19,8 +27,16 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	res, err := h.usecase.Register(c.Request.Context(), req.Username, req.Password)
+
+	if !validateEmail(req.Email) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": ErrInvalidEmail.Error()})
+	}
+
+	res, err := h.usecase.Register(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
+		if errors.Is(err, repo.ErrDuplicateEmail) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -37,7 +53,16 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	oldRefreshToken, err := c.Cookie("refresh_token")
+	if !validateEmail(req.Email) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": ErrInvalidEmail.Error()})
+	}
+
+	cookieName := "refresh_token"
+	if strings.Contains(c.Request.Header.Get("Origin"), ":4200") {
+		cookieName = "refresh_token_admin"
+	}
+
+	oldRefreshToken, err := c.Cookie(cookieName)
 	if err != nil {
 		if err == http.ErrNoCookie {
 			oldRefreshToken = ""
@@ -46,22 +71,33 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		}
 	}
 
-	res, err := h.usecase.Login(c.Request.Context(), req.Username, req.Password, oldRefreshToken)
+	res, err := h.usecase.Login(c.Request.Context(), req.Email, req.Password, oldRefreshToken, cookieName)
 	if err != nil {
 		if errors.Is(err, usecase.ErrInvalidEmailOrPassword) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, usecase.ErrInvalidRole) {
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.SetCookie("refresh_token", res.Tokens.RefreshToken, 3600*24*30, "/", "", false, true)
+	c.SetCookie(cookieName, res.Tokens.RefreshToken, 3600*24*30, "/", "", false, true)
 	c.JSON(http.StatusOK, gin.H{"user": res.User, "access_token": res.Tokens.AccessToken})
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {
-	refreshToken, err := c.Cookie("refresh_token")
+	cookieName := "refresh_token"
+	if strings.Contains(c.Request.Header.Get("Origin"), ":4200") {
+		cookieName = "refresh_token_admin"
+	}
+
+	fmt.Println("cookieName", cookieName)
+
+	refreshToken, err := c.Cookie(cookieName)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "refresh token required"})
 		return
@@ -69,12 +105,13 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 
 	tokens, err := h.usecase.Refresh(c.Request.Context(), refreshToken)
 	if err != nil {
-		c.SetCookie("refresh_token", "", -1, "/", "", false, true)
+		fmt.Println("err", err)
+		c.SetCookie(cookieName, "", -1, "/", "", false, true)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired refresh token"})
 		return
 	}
 
-	c.SetCookie("refresh_token", tokens.RefreshToken, 3600*24*30, "/", "", false, true)
+	c.SetCookie(cookieName, tokens.RefreshToken, 3600*24*30, "/", "", false, true)
 	c.JSON(http.StatusOK, gin.H{"access_token": tokens.AccessToken})
 }
 
@@ -84,12 +121,22 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		_ = h.usecase.Logout(c.Request.Context(), refreshToken)
 	}
 
-	c.SetCookie("refresh_token", "", -1, "/", "", false, true)
+	cookieName := "refresh_token"
+	if strings.Contains(c.Request.Host, ":4200") {
+		cookieName = "refresh_token_admin"
+	}
+
+	c.SetCookie(cookieName, "", -1, "/", "", false, true)
 	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
 }
 
 func (h *AuthHandler) CheckSession(c *gin.Context) {
-	refreshToken, err := c.Cookie("refresh_token")
+	cookieName := "refresh_token"
+	if strings.Contains(c.Request.Header.Get("Origin"), ":4200") {
+		cookieName = "refresh_token_admin"
+	}
+
+	refreshToken, err := c.Cookie(cookieName)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"user": nil, "is_active": false})
 		return
@@ -102,4 +149,9 @@ func (h *AuthHandler) CheckSession(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"user": res.User, "is_active": res.IsActive})
+}
+
+func validateEmail(email string) bool {
+	_, err := mail.ParseAddress(email)
+	return err == nil
 }

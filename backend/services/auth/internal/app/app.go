@@ -33,10 +33,11 @@ func Run(cfg *config.Config) {
 
 	//Usecase
 	authUsecase := usecase.NewAuthUsecase(userRepo, tokenRepo, jwt)
+	userUsecase := usecase.NewUserUsecase(userRepo)
 
 	//Server
 	httpServer := httpserver.New(cfg.Server)
-	controller.SetRoutes(httpServer.Engine, authUsecase, jwt)
+	controller.SetRoutes(httpServer.Engine, authUsecase, userUsecase, jwt)
 	httpServer.Run()
 
 	interrupt := make(chan os.Signal, 1)

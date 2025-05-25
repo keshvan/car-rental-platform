@@ -24,6 +24,7 @@ var (
 	ErrInvalidEmailOrPassword        = errors.New("invalid email or password")
 	ErrRefreshTokenNotFoundOrInvalid = errors.New("refresh token not found or invalid")
 	ErrInvalidRefreshToken           = errors.New("invalid refresh token")
+	ErrInvalidRole                   = errors.New("invalid role")
 )
 
 func NewAuthUsecase(userRepo repo.UserRepository, tokenRepo repo.TokenRepository, jwt *jwt.JWT) AuthUsecase {
@@ -62,10 +63,14 @@ func (u *authUsecase) Register(ctx context.Context, email string, password strin
 	return &response.RegisterResponse{User: *createdUser, Tokens: response.Tokens{AccessToken: access, RefreshToken: refresh}}, nil
 }
 
-func (u *authUsecase) Login(ctx context.Context, email, password, refreshToken string) (*response.LoginResponse, error) {
+func (u *authUsecase) Login(ctx context.Context, email, password, refreshToken, cookieName string) (*response.LoginResponse, error) {
 	user, err := u.userRepo.FindByEmail(ctx, email)
 	if err != nil {
 		return nil, fmt.Errorf("AuthUsecase - Login - UserRepository.FindByEmail(): %w", err)
+	}
+
+	if cookieName == "refresh_token_admin" && user.Role != "admin" {
+		return nil, ErrInvalidRole
 	}
 
 	if refreshToken != "" {

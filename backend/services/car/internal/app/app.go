@@ -26,16 +26,22 @@ func Run(cfg *config.Config) {
 	defer db.Close()
 
 	carRepo := repo.NewCarRepository(db)
+	rentRepo := repo.NewRentRepository(db)
+	balanceRepo := repo.NewBalanceRepository(db)
+	reviewRepo := repo.NewReviewRepository(db)
 
 	//JWT
 	jwt := jwt.New(cfg.Secret, cfg.AccessTTL, cfg.RefreshTTL)
 
 	//Usecase
 	carUsecase := usecase.NewCarUsecase(carRepo)
+	rentUsecase := usecase.NewRentUsecase(rentRepo, carRepo, balanceRepo, reviewRepo)
+	balanceUsecase := usecase.NewBalanceUsecase(balanceRepo)
+	reviewUsecase := usecase.NewReviewUsecase(reviewRepo)
 
 	//Server
 	httpServer := httpserver.New(cfg.Server)
-	controller.SetRoutes(httpServer.Engine, *carUsecase, jwt)
+	controller.SetRoutes(httpServer.Engine, carUsecase, reviewUsecase, rentUsecase, balanceUsecase, jwt)
 	httpServer.Run()
 
 	interrupt := make(chan os.Signal, 1)

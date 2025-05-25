@@ -1,0 +1,41 @@
+<div class="flex justify-center items-center h-screen bg-gray-100">
+    <mat-card class="w-full max-w-md p-8">
+      <mat-card-title class="text-center text-base font-semibold mb-6">Вход в Админ Панель</mat-card-title>
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+        <mat-card-content class="flex flex-col gap-4">
+          <mat-form-field appearance="fill">
+            <mat-label>Email</mat-label>
+            <input matInput formControlName="email" type="email" required>
+            @if (loginForm.get('email')?.hasError('required') && loginForm.get('email')?.touched) {
+              <mat-error>Email обязателен</mat-error>
+            }
+            @if (loginForm.get('email')?.hasError('email') && loginForm.get('email')?.touched) {
+              <mat-error>Введите корректный email</mat-error>
+            }
+          </mat-form-field>
+  
+          <mat-form-field appearance="fill">
+            <mat-label>Пароль</mat-label>
+            <input matInput formControlName="password" type="password" required>
+            @if (loginForm.get('password')?.hasError('required') && loginForm.get('password')?.touched) {
+              <mat-error>Пароль обязателен</mat-error>
+            }
+          </mat-form-field>
+  
+          @if (errorMessage) {
+            <p class="text-red-500 text-sm text-center">{{ errorMessage }}</p>
+          }
+        </mat-card-content>
+        <mat-card-actions class="flex flex-col items-center mt-4">
+          <button mat-raised-button color="primary" type="submit" [disabled]="loginForm.invalid || loading" class="w-full">
+            @if (loading) {
+              <mat-spinner diameter="20" color="accent" class="inline-block mr-2"></mat-spinner>
+              <span>Вход...</span>
+            } @else {
+              <span>Войти</span>
+            }
+          </button>
+        </mat-card-actions>
+      </form>
+    </mat-card>
+  </div>
